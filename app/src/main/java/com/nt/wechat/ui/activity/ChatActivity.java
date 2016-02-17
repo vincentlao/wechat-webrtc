@@ -28,7 +28,6 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
     private ListView messageListView;
     private Contact contact;
     private String contactJid;
-    private ArrayList<Message> mesages = new ArrayList<Message>();
     private ChatMessageAdapter messageAdapter;
 
     @Override
@@ -44,7 +43,7 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
 
         contactJid = getIntent ().getExtras().getString(CommonDefine.CONTACT_JID);
 
-        messageAdapter = new ChatMessageAdapter(this, mesages);
+        messageAdapter = new ChatMessageAdapter(this,  new ArrayList<Message>());
         this.messageListView.setAdapter(messageAdapter);
 
         sendButton.setOnClickListener(new View.OnClickListener() {
@@ -78,8 +77,7 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
                     }
 
                     contentEditText.getText().clear();
-                    //ChatMessageAdapter adapter = (ChatMessageAdapter) messageListView.getAdapter();
-                    mesages.add(new Message(account.getJid(), ChatActivity.this.contact.getJid(), message));
+                    messageAdapter.add(new Message(account.getJid(), ChatActivity.this.contact.getJid(), message));
                     messageAdapter.notifyDataSetChanged();
                     //adapter.add(new Message().setMessage(message).setParticipantJid(account.getJid()));
                     //adapter.notifyDataSetChanged();
@@ -108,19 +106,12 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
         this.contact = contact;
 
         ArrayList<Message> historyMessage = binder.getMessageManagerService().getHistoryMessage(contactJid);
-        //ChatMessageAdapter adapter = (ChatMessageAdapter) messageListView.getAdapter();
-        //if (adapter != null && historyMessage != null) {
-            //adapter.clear();
-            //adapter.addAll();
-            //adapter.notifyDataSetChanged();
-        //}
 
-        mesages.clear();
-        if (historyMessage != null) {
-            mesages.addAll(historyMessage);
+        if (messageAdapter != null) {
+            messageAdapter.clear();
+            messageAdapter.addAll(historyMessage);
+            messageAdapter.notifyDataSetChanged();
         }
-
-        //messageAdapter.notifyDataSetChanged();
     }
 
     @Override
@@ -146,18 +137,21 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
 
     @Override
     public void processMessage(final String senderJid, final org.jivesoftware.smack.packet.Message message) {
-        //ChatMessageAdapter adapter = (ChatMessageAdapter) messageListView.getAdapter();
-        //if (adapter != null && message.getBody() != null && !message.getBody().isEmpty()) {
-           // adapter.add(new Message().setMessage(message.getBody()).setParticipantJid(senderJid));
-            //adapter.notifyDataSetChanged();
-       // }
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mesages.add(new Message(message.getFrom().toString(), message.getTo().toString(), message.getBody()));
-                messageAdapter.notifyDataSetChanged();
+        try {
+            String body = message.getBody();
+            JSONObject jsonMessage = new JSONObject(body);
+            if(jsonMessage.has(CommonDefine.JSON_MESSAGE_TYPE) && jsonMessage.getInt(CommonDefine.JSON_MESSAGE_TYPE) == CommonDefine.MessageType_Text) {
+                final String msg_text = jsonMessage.getString(CommonDefine.JSON_MESSAGE_TEXT);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        messageAdapter.add(new Message(message.getFrom().toString(), message.getTo().toString(), msg_text));
+                        messageAdapter.notifyDataSetChanged();
+                    }
+                });
             }
-        });
-
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 }
