@@ -116,7 +116,6 @@ public class ChatActivity extends BaseActivity implements IMessageManagerService
 
     @Override
     protected void refreshUiReal() {
-
     }
 
     @Override
